@@ -27,16 +27,16 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Prepare .npmrc
-        # 仓库自带 .npmrc 里配了作者的私有源(@billd:registry)，本项目实际无 @billd 作用域依赖，
-        # 但私有源在 CI 上会返回 401，这里移除它并固定到官方源
-        run: |
-          Get-Content .npmrc | Where-Object { $_ -notmatch '^@billd:' } | Set-Content .npmrc
-          Get-Content .npmrc
-
       - name: Install dependencies
         # --ignore-scripts: 跳过 electron 等 postinstall（electron 二进制由 electron-builder 自行下载）
-        run: pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only --registry=https://registry.npmjs.org/
+        # 失败时把日志尾部打印出来，方便定位是哪个包/哪个源报错
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts --reporter=append-only --registry=https://registry.npmjs.org/ *>&1 | Tee-Object -FilePath install.log
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host '===== TAIL OF INSTALL LOG ====='
+            Get-Content install.log -Tail 60
+            exit 1
+          }
         env:
           npm_config_registry: https://registry.npmjs.org/
 
