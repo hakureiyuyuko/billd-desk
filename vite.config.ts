@@ -71,6 +71,9 @@ export default defineConfig(({ mode }) => {
         main: {
           entry: 'electron-main/index.ts', // 主进程文件
           vite: {
+            define: {
+              'process.env.QS_MODE': JSON.stringify(process.env.QS_MODE ?? ''),
+            },
             build: {
               outDir: 'electron-dist',
               lib: {

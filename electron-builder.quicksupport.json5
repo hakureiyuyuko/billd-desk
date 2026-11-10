@@ -1,0 +1,29 @@
+/**
+ * QuickSupport（速援版）打包配置
+ * 与 electron-builder.json5 的区别：
+ * 1. target 用 portable：产出一个免安装的单 exe
+ * 2. requestedExecutionLevel 用 asInvoker：普通用户双击即可运行（不再强制 UAC 提权）
+ * 3. productName / appId 独立，用户数据目录与正式版隔离
+ * 构建：QS_MODE=1 vite build && electron-builder --win --config electron-builder.quicksupport.json5
+ */
+{
+  $schema: 'https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json',
+  appId: 'com.billddesk.quicksupport',
+  productName: 'BilldDeskQuickSupport',
+  directories: {
+    output: 'electron-release/qs/${version}',
+  },
+  files: ['dist', 'electron-dist'],
+  win: {
+    artifactName: 'BilldDeskQuickSupport-${version}-${arch}.${ext}',
+    // asInvoker：免安装场景下不能要求管理员权限
+    requestedExecutionLevel: 'asInvoker',
+    target: [
+      {
+        target: 'portable',
+        arch: ['x64'],
+      },
+    ],
+    icon: 'build/icons/icon.ico',
+  },
+}

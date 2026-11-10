@@ -1,5 +1,35 @@
 <template>
-  <div class="remote-wrap">
+  <div
+    class="remote-wrap"
+    :class="{ qs: props.qs }"
+  >
+    <div
+      v-if="props.qs"
+      class="qs-bar"
+    >
+      <div class="qs-title">
+        <span class="qs-logo">BilldDesk QuickSupport</span>
+        <span
+          class="qs-dot"
+          :class="{ on: connectStatus === WsConnectStatusEnum.connect }"
+        ></span>
+        <span class="qs-status">{{ qsStatusText }}</span>
+      </div>
+      <div class="qs-btns">
+        <div
+          class="qs-btn"
+          @click="handleQsMin"
+        >
+          —
+        </div>
+        <div
+          class="qs-btn close"
+          @click="handleQsClose"
+        >
+          ✕
+        </div>
+      </div>
+    </div>
     <div class="container">
       <div class="local-device">
         <div class="label">此设备</div>
@@ -10,7 +40,7 @@
               <div class="code">{{ cacheStore.deskUserUuid }}</div>
               <div
                 class="ico copy"
-                @click="handleCopyRemoteInfo"
+                @click="props.qs ? handleCopyQsInfo() : handleCopyRemoteInfo()"
               ></div>
               <div
                 class="ico refresh"
@@ -39,7 +69,20 @@
           </div>
         </div>
       </div>
-      <div class="remote-device">
+      <div
+        v-if="props.qs"
+        class="qs-tip"
+      >
+        <div class="qs-tip-title">等待对方发起连接</div>
+        <div class="qs-tip-desc">
+          请把上面的「设备代码」和「临时密码」告知协助您的人，对方在 BilldDesk
+          中输入后即可远程查看您的屏幕。连接过程中请保持本窗口开启。
+        </div>
+      </div>
+      <div
+        v-if="!props.qs"
+        class="remote-device"
+      >
         <div class="label">远程控制设备</div>
         <div class="info">
           <div
@@ -106,7 +149,7 @@
         </div>
       </div>
 
-      <template v-if="!appStore.remoteDesk.size">
+      <template v-if="!props.qs && !appStore.remoteDesk.size">
         <div class="tip">已准备好连接</div>
         <div class="link-config">
           <div class="link-item">
@@ -308,6 +351,9 @@ const route = useRoute();
 const appStore = useAppStore();
 const networkStore = useNetworkStore();
 const cacheStore = usePiniaCacheStore();
+
+// QuickSupport 受控模式标记（由 /quickSupport 路由的 props 传入）
+const props = withDefaults(defineProps<{ qs?: boolean }>(), { qs: false });
 
 const { updateWebRtcRemoteDeskConfig, webRtcRemoteDesk } =
   useWebRtcRemoteDesk();
@@ -757,6 +803,44 @@ async function handleRTC(receiver) {
   } catch (error) {
     console.log(error);
   }
+}
+
+/** QuickSupport 顶部状态文案 */
+const qsStatusText = computed(() => {
+  if (connectStatus.value !== WsConnectStatusEnum.connect) {
+    return '正在连接服务器…';
+  }
+  return appStore.remoteDesk.size
+    ? `正在被 ${appStore.remoteDesk.size} 个设备控制`
+    : '在线 · 等待对方连接';
+});
+
+/** QuickSupport 复制本机设备码和密码 */
+function handleCopyQsInfo() {
+  copyToClipBoard(
+    `BilldDeskQuickSupport:设备代码:${cacheStore.deskUserUuid};临时密码:${cacheStore.deskUserPassword}`
+  );
+  window.$message.success('已复制设备代码和临时密码！');
+}
+
+/** QuickSupport 窗口最小化 */
+function handleQsMin() {
+  ipcRendererSend({
+    windowId: WINDOW_ID_ENUM.remote,
+    channel: IPC_EVENT.windowMinimize,
+    requestId: getRandomString(8),
+    data: {},
+  });
+}
+
+/** QuickSupport 窗口关闭 */
+function handleQsClose() {
+  ipcRendererSend({
+    windowId: WINDOW_ID_ENUM.remote,
+    channel: IPC_EVENT.closeAllWindow,
+    requestId: getRandomString(8),
+    data: {},
+  });
 }
 
 function handleCopyRemoteInfo() {
@@ -1253,6 +1337,167 @@ function handleDel(sender) {
         }
       }
     }
+  }
+}
+
+// ===== QuickSupport 受控模式 =====
+.qs-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100vw;
+  height: 44px;
+  padding: 0 8px 0 16px;
+  background-color: #1f1f1f;
+  color: white;
+
+  user-select: none;
+
+  -webkit-app-region: drag;
+
+  .qs-title {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+
+    .qs-logo {
+      margin-right: 10px;
+      font-weight: 600;
+    }
+
+    .qs-dot {
+      margin-right: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: #888;
+
+      &.on {
+        background-color: #3ecf8e;
+      }
+    }
+
+    .qs-status {
+      color: rgb(255 255 255 / 75%);
+    }
+  }
+
+  .qs-btns {
+    display: flex;
+
+    -webkit-app-region: no-drag;
+
+    .qs-btn {
+      width: 34px;
+      height: 26px;
+      border-radius: 4px;
+      color: rgb(255 255 255 / 85%);
+      text-align: center;
+      font-size: 14px;
+      line-height: 26px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: rgb(255 255 255 / 15%);
+      }
+
+      &.close:hover {
+        background-color: #e81123;
+        color: white;
+      }
+    }
+  }
+}
+
+.remote-wrap.qs {
+  background-color: #fafafa;
+
+  .container {
+    padding: 64px 26px 0;
+  }
+
+  .local-device {
+    padding-top: 0;
+
+    .label {
+      margin-bottom: 6px;
+      color: #999;
+      font-weight: 400;
+      font-size: 15px;
+    }
+
+    .info {
+      flex-direction: column;
+
+      .info-left,
+      .info-right {
+        .txt {
+          margin-bottom: 4px;
+          font-size: 12px;
+        }
+
+        .code-info {
+          align-items: center;
+
+          .code {
+            box-sizing: border-box;
+            padding: 8px 14px;
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
+            font-family: Consolas, Menlo, monospace;
+            font-size: 30px;
+            line-height: 1.3;
+            letter-spacing: 2px;
+          }
+
+          .ico {
+            margin-right: 0;
+            margin-left: 10px;
+            width: 22px;
+            height: 22px;
+          }
+        }
+      }
+
+      .info-right {
+        margin-top: 18px;
+      }
+    }
+  }
+
+  .qs-tip {
+    margin-top: 26px;
+    padding: 16px;
+    border-radius: 8px;
+    background-color: rgb(255 215 0 / 12%);
+
+    .qs-tip-title {
+      margin-bottom: 6px;
+      color: #8a6d00;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .qs-tip-desc {
+      color: #8a6d00;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+  }
+
+  .list {
+    overflow: auto;
+    margin-top: 16px;
+    height: auto;
+    max-height: 160px;
   }
 }
 </style>

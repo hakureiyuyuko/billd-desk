@@ -51,7 +51,12 @@ if (!app.requestSingleInstanceLock()) {
   process.exit(0);
 }
 
-const windowNormalParams = { width: 800, height: 500 };
+/** QuickSupport 单文件版：更紧凑的窗口 + 直接进入受控模式页面 */
+const isQS = process.env.QS_MODE === '1';
+
+const windowNormalParams = isQS
+  ? { width: 460, height: 620 }
+  : { width: 800, height: 500 };
 let winBounds: Electron.Rectangle | null;
 const mainWindowId = WINDOW_ID_ENUM.remote;
 const windowMap = new Map<number, BrowserWindow>();
@@ -189,7 +194,10 @@ function main() {
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL as string);
   } else {
-    mainWindow.loadFile(path.join(process.env.DIST as string, 'index.html'));
+    mainWindow.loadFile(
+      path.join(process.env.DIST as string, 'index.html'),
+      isQS ? { hash: '/quickSupport' } : undefined
+    );
   }
 
   windowMap.set(mainWindowId, mainWindow);

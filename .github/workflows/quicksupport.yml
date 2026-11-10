@@ -1,0 +1,48 @@
+name: Build QuickSupport
+
+# QuickSupport（速援版）单文件构建：Windows portable exe
+# 手动触发或在 chatbox/quicksupport 分支推送时自动构建
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chatbox/quicksupport
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          npm_config_registry: https://registry.npmjs.org/
+
+      - name: Build portable exe
+        run: pnpm build:qs
+        env:
+          QS_MODE: '1'
+
+      - name: List artifacts
+        run: Get-ChildItem -Recurse electron-release/qs | Select-Object FullName, Length
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BilldDeskQuickSupport-win-x64
+          path: electron-release/qs/**/*.exe
+          if-no-files-found: error

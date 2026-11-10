@@ -16,6 +16,7 @@ export const mobileRouterName = {
 
 export const routerName = {
   remote: 'remote',
+  quickSupport: 'quickSupport',
   home: 'home',
   about: 'about',
   version: 'version',
@@ -85,6 +86,13 @@ export const defaultRoutes: RouteRecordRaw[] = [
 const router = createRouter({
   routes: [
     ...defaultRoutes,
+    {
+      // QuickSupport 单文件版：受控模式（不套侧边栏，独立全屏页面）
+      name: routerName.quickSupport,
+      path: '/quickSupport',
+      component: () => import('@/views/remote/index.vue'),
+      props: { qs: true },
+    },
     {
       path: '/:pathMatch(.*)*',
       name: routerName.notFound,
